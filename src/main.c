@@ -27,6 +27,8 @@ struct key_handler {
 #define max(a, b) (a > b ? a : b)
 #define clamp(num, low, high) (min(max(num, low), high))
 
+#define SCREEN_CENTER Vector2(WINDOW_WIDTH >> 1, WINDOW_HEIGHT >> 1)
+
 int initialize_window(void) {
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
         SDL_Log("ERROR : SDL Initialization > %s\n", SDL_GetError());
@@ -57,9 +59,9 @@ int initialize_window(void) {
 
 void setup() {
     // spawn player
-    player.x = 50;
-    player.y = 50;
-    player.angle = PI/2;
+    player.x = 0;
+    player.y = 0;
+    player.angle = 0;
     player.rotate_speed = PI/4;
     player.walkspeed = 300;
 }
@@ -94,12 +96,11 @@ void update() {
 
     player.angle += (key_handler.left - key_handler.right) * player.rotate_speed * dt;
 
-    player.x += (key_handler.d - key_handler.a) * (player.walkspeed * cos(player.angle) * dt);
-    player.y += (key_handler.d - key_handler.a) * (player.walkspeed * sin(player.angle) * dt);
+    player.x += (key_handler.a - key_handler.d) * (player.walkspeed * sin(player.angle) * dt);
+    player.y += (key_handler.d - key_handler.a) * (player.walkspeed * cos(player.angle) * dt);
 
-
-    // player.x += (key_handler.s - key_handler.w) * (player.walkspeed * sin(player.angle) * dt);
-    // player.y += (key_handler.s - key_handler.w) * (player.walkspeed * cos(player.angle) * dt);
+    player.x += (key_handler.w - key_handler.s) * (player.walkspeed * cos(player.angle) * dt);
+    player.y += (key_handler.w - key_handler.s) * (player.walkspeed * sin(player.angle) * dt);
 }
 
 void render() {
@@ -108,26 +109,46 @@ void render() {
     SDL_RenderClear(renderer);
 
     float angle = player.angle;
-    Vector2 player_pos = Vector2(player.x, player.y);
+    float px = player.x, py = player.y;
 
-    print(player_pos);
+    // point coord
+    float vx1 = 50, vy1 = 50;
+    float vx2 = 150, vy2 = 150;
 
-    // wall coords
-    Vector2 wall0 = rotate_vector(Vector2(70, 20), player_pos, angle);
-    Vector2 wall1 = rotate_vector(Vector2(70, 70), player_pos, angle);
+    // transform point
+    float tx1 = vx1 - px, ty1 = vy1 - py;
+    float tx2 = vx2 - px, ty2 = vy2 - py;
 
+    // rotate around point
+    float tz1 = tx1 * cos(angle) + ty1 * sin(angle);
+    float tz2 = tx2 * cos(angle) + ty2 * sin(angle);
+    tx1 = tx1 * sin(angle) - ty1 * cos(angle);
+    tx2 = tx2 * sin(angle) - ty2 * cos(angle);
+
+    // plot line
     SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-    SDL_RenderDrawLine(renderer, wall0.x, wall0.y, wall1.x, wall1.y);
+    SDL_RenderDrawLine(renderer,
+        SCREEN_CENTER.x - tx1,
+        SCREEN_CENTER.y - tz1,
+        SCREEN_CENTER.x - tx2,
+        SCREEN_CENTER.y - tz2
+    );
 
     // player coordinates
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_Rect player_rect = {
-        (int)player.x,
-        (int)player.y,
-        (int)3,
-        (int)3
+        (int)SCREEN_CENTER.x - 8/2,
+        (int)SCREEN_CENTER.y - 8/2,
+        8,
+        8
     };
     SDL_RenderFillRect(renderer, &player_rect);
+
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 122);
+    SDL_RenderDrawLine(renderer, SCREEN_CENTER.x, SCREEN_CENTER.y, SCREEN_CENTER.x, SCREEN_CENTER.y - 25);
+
+
+
     SDL_RenderPresent(renderer);
 }
 

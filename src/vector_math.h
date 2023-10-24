@@ -15,18 +15,18 @@ extern const Vector2 VEC2_ZERO;
 extern const Vector2 VEC2_ONE;
 
 // constructor
-Vector2 new(float x, float y);
+Vector2 Vector2_new(float x, float y);
 
 // math
-Vector2 add(Vector2 a, Vector2 b);
-Vector2 subtract(Vector2 a, Vector2 b);
+Vector2 Vector2_add(Vector2 a, Vector2 b);
+Vector2 Vector2_sub(Vector2 a, Vector2 b);
 Vector2 vec_multiply(Vector2 a, Vector2 b);
 Vector2 num_multiply(Vector2 a, float b);
 Vector2 divide(Vector2 a, Vector2 b);
-Vector2 rotate_vector(Vector2 point, Vector2 pivot, float angle);
+Vector2 Vector2_rotate(Vector2 point, Vector2 pivot, float angle);
 
-void print(Vector2 v);
+void Vector2_print(Vector2 v);
 
-#define Vector2(x, y) (new(x, y))
+#define Vector2(x, y) (Vector2_new(x, y))
 
 #endif
