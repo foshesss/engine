@@ -23,6 +23,12 @@ Vector2 vec_multiply(Vector2 a, Vector2 b) {
     return Vector2(a.x * b.x, a.y * b.y);
 }
 
+void Vector2_Unit(Vector2* original) {
+    float len = sqrt(pow((*original).x, 2) + pow((*original).y, 2));
+    (*original).x /= len;
+    (*original).y /= len;
+}
+
 Vector2 num_multiply(Vector2 a, float n) {
     return Vector2(a.x * n, a.y * n);
 }

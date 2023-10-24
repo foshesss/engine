@@ -57,10 +57,10 @@ int initialize_window(void) {
 
 void setup() {
     // spawn player
-    player.x = 0;
-    player.y = 0;
+    player.x = 50;
+    player.y = 50;
     player.angle = 0;
-    player.rotate_speed = PI/4;
+    player.rotate_speed = PI/3;
     player.walkspeed = 300;
 }
 
@@ -92,13 +92,25 @@ void update() {
     float dt = (current_time - last_frame_time)/1000.0f;
     last_frame_time = current_time;
 
+    // update player position
     player.angle += (key_handler.right - key_handler.left) * player.rotate_speed * dt;
+    float x_dir = 
+        (key_handler.a - key_handler.d) * sin(player.angle) +
+        (key_handler.w - key_handler.s) * cos(player.angle);
 
-    player.x += (key_handler.a - key_handler.d) * (player.walkspeed * sin(player.angle) * dt);
-    player.y += (key_handler.d - key_handler.a) * (player.walkspeed * cos(player.angle) * dt);
+    float y_dir = 
+        (key_handler.d - key_handler.a) * cos(player.angle) +
+        (key_handler.w - key_handler.s) * sin(player.angle);
 
-    player.x += (key_handler.w - key_handler.s) * (player.walkspeed * cos(player.angle) * dt);
-    player.y += (key_handler.w - key_handler.s) * (player.walkspeed * sin(player.angle) * dt);
+    // convert to unit vector
+    Vector2 direction_vector = Vector2(x_dir, y_dir);
+    Vector2_Unit(&direction_vector);
+
+    // check for nan
+    if (direction_vector.x != direction_vector.x) return;
+
+    player.x += direction_vector.x * player.walkspeed * dt;
+    player.y += direction_vector.y * player.walkspeed * dt;
 }
 
 void render() {

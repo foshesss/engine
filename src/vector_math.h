@@ -22,6 +22,7 @@ Vector2 vec_multiply(Vector2 a, Vector2 b);
 Vector2 num_multiply(Vector2 a, float b);
 Vector2 divide(Vector2 a, Vector2 b);
 Vector2 Vector2_rotate(Vector2 point, Vector2 pivot, float angle);
+void Vector2_Unit(Vector2* original);
 
 void Vector2_print(Vector2 v);
 
