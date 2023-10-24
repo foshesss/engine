@@ -27,8 +27,6 @@ struct key_handler {
 #define max(a, b) (a > b ? a : b)
 #define clamp(num, low, high) (min(max(num, low), high))
 
-#define SCREEN_CENTER Vector2(WINDOW_WIDTH >> 1, WINDOW_HEIGHT >> 1)
-
 int initialize_window(void) {
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
         SDL_Log("ERROR : SDL Initialization > %s\n", SDL_GetError());
@@ -94,7 +92,7 @@ void update() {
     float dt = (current_time - last_frame_time)/1000.0f;
     last_frame_time = current_time;
 
-    player.angle += (key_handler.left - key_handler.right) * player.rotate_speed * dt;
+    player.angle += (key_handler.right - key_handler.left) * player.rotate_speed * dt;
 
     player.x += (key_handler.a - key_handler.d) * (player.walkspeed * sin(player.angle) * dt);
     player.y += (key_handler.d - key_handler.a) * (player.walkspeed * cos(player.angle) * dt);
@@ -108,33 +106,39 @@ void render() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    float angle = player.angle;
-    float px = player.x, py = player.y;
 
-    // point coord
-    float vx1 = 50, vy1 = 50;
-    float vx2 = 150, vy2 = 150;
+    Vector2 player_pivot = Vector2(player.x, player.y);
+    Vector2 vectors[] = {
+        Vector2(-250, -250),
+        Vector2(-250, 250),
+        Vector2(250, 250),
+        Vector2(250, -250),
+        Vector2(-250, -250)
+    };
 
-    // transform point
-    float tx1 = vx1 - px, ty1 = vy1 - py;
-    float tx2 = vx2 - px, ty2 = vy2 - py;
+    int len = sizeof(vectors)/sizeof(vectors[0]);
+    SDL_Point *points = (SDL_Point*)malloc(len * sizeof(SDL_Point));
+    for (int i = 0; i < len; i++) {
 
-    // rotate around point
-    float tz1 = tx1 * cos(angle) + ty1 * sin(angle);
-    float tz2 = tx2 * cos(angle) + ty2 * sin(angle);
-    tx1 = tx1 * sin(angle) - ty1 * cos(angle);
-    tx2 = tx2 * sin(angle) - ty2 * cos(angle);
+        // tranform point about player
+        Vector2 p = vectors[i];
+        p = Vector2_rotate(p, player_pivot, player.angle);
+        p = Vector2_sub(p, player_pivot);
+        p = Vector2_sub(SCREEN_CENTER, p);
+
+        // insert point into points array
+        SDL_Point point;
+        point.x = p.x;
+        point.y = p.y;
+        points[i] = point;
+    }
 
     // plot line
     SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-    SDL_RenderDrawLine(renderer,
-        SCREEN_CENTER.x - tx1,
-        SCREEN_CENTER.y - tz1,
-        SCREEN_CENTER.x - tx2,
-        SCREEN_CENTER.y - tz2
-    );
+    SDL_RenderDrawLines(renderer, points, len);
+    free(points);
 
-    // player coordinates
+    // draw the player
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_Rect player_rect = {
         (int)SCREEN_CENTER.x - 8/2,
@@ -143,12 +147,10 @@ void render() {
         8
     };
     SDL_RenderFillRect(renderer, &player_rect);
-
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 122);
     SDL_RenderDrawLine(renderer, SCREEN_CENTER.x, SCREEN_CENTER.y, SCREEN_CENTER.x, SCREEN_CENTER.y - 25);
 
-
-
+    // switch to new render
     SDL_RenderPresent(renderer);
 }
 

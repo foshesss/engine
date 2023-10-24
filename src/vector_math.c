@@ -35,8 +35,8 @@ Vector2 Vector2_rotate(Vector2 point, Vector2 pivot, float angle) {
     point = Vector2_sub(point, pivot);
 
     return Vector2(
-        point.x * c - point.y * s + pivot.x,
-        point.x * s + point.y * c + pivot.y
+        point.x * s - point.y * c + pivot.x,
+        point.x * c + point.y * s + pivot.y
     );
 }
 

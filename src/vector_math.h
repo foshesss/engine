@@ -4,8 +4,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#define PI 3.1415
-
 typedef struct {
     float x;
     float y;
