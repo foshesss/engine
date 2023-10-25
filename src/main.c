@@ -2,7 +2,7 @@
 #include <SDL2/SDL.h>
 #include <math.h>
 #include "./constants.h"
-#include "./vector_math.h"
+#include "./vector.h"
 
 int game_is_running = FALSE;
 SDL_Window* window = NULL;
@@ -10,17 +10,17 @@ SDL_Renderer* renderer = NULL;
 
 int last_frame_time = 0;
 
-struct player {
-    float x;
-    float y;
+struct Camera {
+    Vector3 position;
     float angle;
-    int walkspeed;
+    int move_speed;
+    int fov;
     float rotate_speed;
-} player;
+} camera;
 
 struct key_handler {
     int w, a, s, d;
-    int left, right;
+    int left, right; // rotating left/right
 } key_handler;
 
 #define min(a, b) (a < b ? a : b)
@@ -52,16 +52,19 @@ int initialize_window(void) {
         return FALSE;
     }
 
+
     return TRUE;
 }
 
 void setup() {
-    // spawn player
-    player.x = 50;
-    player.y = 50;
-    player.angle = 0;
-    player.rotate_speed = PI/3;
-    player.walkspeed = 300;
+
+
+    // setup camera
+    camera.position = Vector3(70,-110,20);
+    camera.angle = 0;
+    camera.rotate_speed = PI/3;
+    camera.move_speed = 300;
+    camera.fov = 200;
 }
 
 void process_input() {
@@ -92,75 +95,98 @@ void update() {
     float dt = (current_time - last_frame_time)/1000.0f;
     last_frame_time = current_time;
 
-    // update player position
-    player.angle += (key_handler.right - key_handler.left) * player.rotate_speed * dt;
+    // update camera position
+    camera.angle += (key_handler.right - key_handler.left) * camera.rotate_speed * dt;
     float x_dir = 
-        (key_handler.a - key_handler.d) * sin(player.angle) +
-        (key_handler.w - key_handler.s) * cos(player.angle);
+        (key_handler.a - key_handler.d) * sin(camera.angle) +
+        (key_handler.w - key_handler.s) * cos(camera.angle);
 
     float y_dir = 
-        (key_handler.d - key_handler.a) * cos(player.angle) +
-        (key_handler.w - key_handler.s) * sin(player.angle);
+        (key_handler.d - key_handler.a) * cos(camera.angle) +
+        (key_handler.w - key_handler.s) * sin(camera.angle);
 
     // convert to unit vector
     Vector2 direction_vector = Vector2(x_dir, y_dir);
-    Vector2_Unit(&direction_vector);
+    direction_vector = Vector2_unit(direction_vector);
 
     // check for nan
     if (direction_vector.x != direction_vector.x) return;
 
-    player.x += direction_vector.x * player.walkspeed * dt;
-    player.y += direction_vector.y * player.walkspeed * dt;
+    camera.position.x += direction_vector.x * camera.move_speed * dt;
+    camera.position.y += direction_vector.y * camera.move_speed * dt;
 }
 
+void draw_wall(Vector3 p1, Vector3 p2, int height) {
+    float angle = camera.angle;
+    int fov = camera.fov;
+
+    // translate wall points
+    Vector3 points[2] = {p1, p2};
+    float co = cos(angle), si = sin(angle);
+    for (int i = 0; i < 2; i++) {
+        Vector3 curr = points[i];
+        Vector3 w;
+
+        // translate to player
+        curr = Vector3_sub(curr, camera.position);
+        w.x = curr.x * co - curr.y * si;
+        w.y = curr.x * si + curr.y * co;
+        w.z = curr.z;
+
+        // modify based on screen position
+        w.x = w.x * fov/w.y + SCREEN_CENTER.x;
+        w.y = w.z * fov/w.y + SCREEN_CENTER.y;
+
+        points[i] = w;
+
+        Vector3_print(w);
+
+        int size = 4;
+        SDL_Rect pixel = {
+            w.x - size/2,
+            w.y - size/2,
+            size,
+            size
+        };
+        SDL_RenderFillRect(renderer, &pixel);
+    }
+
+    // p1 = points[0]; p2 = points[1];
+
+    // int dyb = p2.y - p1.y;
+    // int dx = p2.x - p1.x; if (dx == 0) dx = 1;
+    // int xs = p1.x;
+
+
+    // for (int x = p1.x; x < p2.x; x++) {
+    //     printf("%d\n", x);
+    //     int y1 = dyb * (x - xs + .5)/dx + p1.y;
+    //     SDL_Rect pixel = {
+    //         x - 10/2,
+    //         y1 - 10/2,
+    //         10,
+    //         10
+    //     };
+    //     SDL_RenderFillRect(renderer, &pixel);
+    // }
+}
+
+// TODO: Point in view: https://math.stackexchange.com/questions/4144827/
+
+
 void render() {
-    // fill background
+    // clear background
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
+    Vector3 p0 = {70, }
 
-    Vector2 player_pivot = Vector2(player.x, player.y);
-    Vector2 vectors[] = {
-        Vector2(-250, -250),
-        Vector2(-250, 250),
-        Vector2(250, 250),
-        Vector2(250, -250),
-        Vector2(-250, -250)
-    };
 
-    int len = sizeof(vectors)/sizeof(vectors[0]);
-    SDL_Point *points = (SDL_Point*)malloc(len * sizeof(SDL_Point));
-    for (int i = 0; i < len; i++) {
-
-        // tranform point about player
-        Vector2 p = vectors[i];
-        p = Vector2_rotate(p, player_pivot, player.angle);
-        p = Vector2_sub(p, player_pivot);
-        p = Vector2_sub(SCREEN_CENTER, p);
-
-        // insert point into points array
-        SDL_Point point;
-        point.x = p.x;
-        point.y = p.y;
-        points[i] = point;
-    }
-
-    // plot line
+    // draw a 3D point
     SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-    SDL_RenderDrawLines(renderer, points, len);
-    free(points);
-
-    // draw the player
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_Rect player_rect = {
-        (int)SCREEN_CENTER.x - 8/2,
-        (int)SCREEN_CENTER.y - 8/2,
-        8,
-        8
-    };
-    SDL_RenderFillRect(renderer, &player_rect);
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 122);
-    SDL_RenderDrawLine(renderer, SCREEN_CENTER.x, SCREEN_CENTER.y, SCREEN_CENTER.x, SCREEN_CENTER.y - 25);
+    for (int x = 0; x < 400; x++)
+        for (int y = 0; y < 100; y++)
+            SDL_RenderDrawPoint(renderer, x, 50 + y);
 
     // switch to new render
     SDL_RenderPresent(renderer);
