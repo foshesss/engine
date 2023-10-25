@@ -65,6 +65,10 @@ Vector3 Vector3_sub(Vector3 a, Vector3 b) {
     return Vector3(a.x - b.x, a.y - b.y, a.z - b.z);
 }
 
+Vector3 Vector3_scale(Vector3 v, float n) {
+    return Vector3(v.x * n, v.y * n, v.z * n);
+}
+
 void Vector3_print(Vector3 v) {
     printf("(%f, %f, %f)\n", v.x, v.y, v.z);
 }

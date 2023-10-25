@@ -44,6 +44,7 @@ Vector3 Vector3_new(float x, float y, float z);
 
 // math
 Vector3 Vector3_sub(Vector3 a, Vector3 b);
+Vector3 Vector3_scale(Vector3 v, float n);
 
 // general
 void Vector3_print(Vector3 v);

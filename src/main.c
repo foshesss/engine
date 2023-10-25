@@ -3,6 +3,7 @@
 #include <math.h>
 #include "./constants.h"
 #include "./vector.h"
+#include "./matrix.h"
 
 int game_is_running = FALSE;
 SDL_Window* window = NULL;
@@ -12,7 +13,10 @@ int last_frame_time = 0;
 
 struct Camera {
     Vector3 position;
+    Vector3 orientation;
     float angle;
+    // float pan;
+    // float tilt;
     int move_speed;
     int fov;
     float rotate_speed;
@@ -37,10 +41,11 @@ int initialize_window(void) {
         NULL, // title
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        WINDOW_WIDTH,
-        WINDOW_HEIGHT,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT,
         SDL_WINDOW_SHOWN
     );
+
     if (window == NULL) {
         SDL_Log("ERROR : SDL Window creation > %s\n", SDL_GetError());
         return FALSE;
@@ -57,13 +62,11 @@ int initialize_window(void) {
 }
 
 void setup() {
-
-
     // setup camera
-    camera.position = Vector3(70,-110,20);
+    camera.position = Vector3(0, 0, 5);
     camera.angle = 0;
     camera.rotate_speed = PI/3;
-    camera.move_speed = 300;
+    camera.move_speed = 5;
     camera.fov = 200;
 }
 
@@ -80,6 +83,7 @@ void process_input() {
     key_handler.left = keyboard_states[SDL_SCANCODE_Q];
     key_handler.right = keyboard_states[SDL_SCANCODE_E];
 
+    // exit
     SDL_Event event;
     while (SDL_PollEvent(&event))
         if (event.type == SDL_QUIT) game_is_running = FALSE;
@@ -116,78 +120,105 @@ void update() {
     camera.position.y += direction_vector.y * camera.move_speed * dt;
 }
 
-void draw_wall(Vector3 p1, Vector3 p2, int height) {
-    float angle = camera.angle;
-    int fov = camera.fov;
-
-    // translate wall points
-    Vector3 points[2] = {p1, p2};
-    float co = cos(angle), si = sin(angle);
-    for (int i = 0; i < 2; i++) {
-        Vector3 curr = points[i];
-        Vector3 w;
-
-        // translate to player
-        curr = Vector3_sub(curr, camera.position);
-        w.x = curr.x * co - curr.y * si;
-        w.y = curr.x * si + curr.y * co;
-        w.z = curr.z;
-
-        // modify based on screen position
-        w.x = w.x * fov/w.y + SCREEN_CENTER.x;
-        w.y = w.z * fov/w.y + SCREEN_CENTER.y;
-
-        points[i] = w;
-
-        Vector3_print(w);
-
-        int size = 4;
-        SDL_Rect pixel = {
-            w.x - size/2,
-            w.y - size/2,
-            size,
-            size
-        };
-        SDL_RenderFillRect(renderer, &pixel);
-    }
-
-    // p1 = points[0]; p2 = points[1];
-
-    // int dyb = p2.y - p1.y;
-    // int dx = p2.x - p1.x; if (dx == 0) dx = 1;
-    // int xs = p1.x;
-
-
-    // for (int x = p1.x; x < p2.x; x++) {
-    //     printf("%d\n", x);
-    //     int y1 = dyb * (x - xs + .5)/dx + p1.y;
-    //     SDL_Rect pixel = {
-    //         x - 10/2,
-    //         y1 - 10/2,
-    //         10,
-    //         10
-    //     };
-    //     SDL_RenderFillRect(renderer, &pixel);
-    // }
-}
-
 // TODO: Point in view: https://math.stackexchange.com/questions/4144827/
 
+void draw_triangle() {
+    // TODO: eventually, this: https://stackoverflow.com/questions/69447778
+    // current method is mostly used for debugging
+
+    SDL_Point points[4];
+    points[0].x = 0; points[0].y = 0;
+    points[1].x = 0; points[1].y = 720;
+    points[2].x = 640; points[2].y = 360;
+    points[3].x = 0; points[3].y = 0;
+
+    SDL_RenderDrawLines(
+        renderer,
+        points,
+        4
+    );
+}
+
+void draw_pixel(int x, int y) {
+    SDL_RenderDrawPoint(renderer, x, y);
+}
+
+Vector3 draw_3d_point(Vector3 p) {
+
+    float co = cos(camera.angle);
+    float si = sin(camera.angle);
+
+    // offset points by player
+    p = Vector3_sub(p, camera.position);
+    Vector3 translated;
+
+    // discover world x position
+    translated.x = p.x * co - p.y * si;
+    
+    // discover world y position
+    translated.y = p.y * co + p.x * si;
+
+    // discover world z position
+    translated.z = p.z;
+
+    // find position on screen
+    translated.x = translated.x * 200/translated.y + SCREEN_CENTER.x;
+    translated.y = translated.z * 200/translated.y + SCREEN_CENTER.y;
+
+    // do not draw off screen points
+    // if (translated.x < 0 || SCREEN_WIDTH < translated.x ||
+    //     translated.y < 0 || SCREEN_HEIGHT < translated.y) return Vector3;
+
+    return translated;
+}
+
+void draw_wall(Vector3 left, Vector3 right) {
+    if (left.x < 1) left.x = 1;
+    if (right.x < 1) right.x = 1;
+    if (left.x > SCREEN_WIDTH - 1) left.x = SCREEN_WIDTH - 1;
+    if (right.x > SCREEN_WIDTH - 1) right.x = SCREEN_WIDTH - 1;
+
+    int dy = right.y - left.y; // y distance
+    int dx = right.x - left.x; // x distance
+    if (dx == 0) dx = 1;
+
+    for (int x = left.x; x < right.x; x++) {
+        int y1 = dy * (x - left.x + .5)/dx + left.y;
+        printf("%d\n", y1);
+        // for (int y = y1; y < y + 30; y++) {
+        //     draw_pixel(x, y);
+        // }
+    }
+}
 
 void render() {
     // clear background
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    Vector3 p0 = {70, }
+    printf("-----------\n");
+    Vector3_print(camera.position);
 
+    float fov = camera.fov * PI/180;
+    float fRad = 1/tan(fov/2);
 
-    // draw a 3D point
-    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-    for (int x = 0; x < 400; x++)
-        for (int y = 0; y < 100; y++)
-            SDL_RenderDrawPoint(renderer, x, 50 + y);
+    matrix4x4 projection_matrix;
+    projection_matrix.m[0][0] = ASPECT_RATIO * fRad;
+    projection_matrix.m[1][1] = fRad;
 
+    Vector3 points[] = {
+        {5, -10, 0},
+        {50, -10, 0}
+    };
+
+    // draw points
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    for (int i = 0; i < 2; i++) {
+        points[i] = draw_3d_point(points[i]);
+        Vector3_print(points[i]);
+    }
+
+    draw_wall(points[0], points[1]);
     // switch to new render
     SDL_RenderPresent(renderer);
 }
